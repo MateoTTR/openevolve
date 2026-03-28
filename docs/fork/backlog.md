@@ -1,13 +1,13 @@
 # OpenEvolve Fork — Task Backlog
 
-## Sprint 001 — Quick Wins + CI Foundation
+## Sprint 001 — Quick Wins + CI Foundation ✓
 
 | # | Task | Status | Sprint | Upstream PR? |
 |---|---|---|---|---|
-| OE-01 | Set up CI workflow for fork: unit tests + black + isort + mypy on push/PR to develop | [ ] | S1 | No |
-| OE-02 | Add Gemini model prefixes to `OPENAI_REASONING_MODEL_PREFIXES` in `llm/openai.py` (F2) | [ ] | S1 | Yes |
-| OE-03 | Add configurable `reasoning_model_prefixes` to `LLMModelConfig` so providers can declare prefixes via config (future-proof F2) | [ ] | S1 | Yes |
-| OE-04 | Unit tests for Gemini prefix detection (reasoning model detection, `max_completion_tokens` vs `max_tokens`) | [ ] | S1 | Yes |
+| OE-01 | Set up CI workflow for fork: unit tests + black + isort + mypy on push/PR to develop | [x] PR #3 | S1 | No |
+| OE-02 | Extract `OPENAI_REASONING_MODEL_PREFIXES` to module-level constant, extract `is_reasoning_model()` function | [x] PR #4 | S1 | Yes |
+| OE-03 | Add `is_reasoning_model: Optional[bool] = None` to `LLMModelConfig` — 3-state: True (force), False (force), None (auto-detect via OpenAI prefixes) | [x] PR #4 | S1 | Yes |
+| OE-04 | Unit tests for reasoning model detection: 3-state logic, backward compat, explicit override for Gemini/Claude/DeepSeek | [x] PR #4 | S1 | Yes |
 
 ## Sprint 002 — Post-Evolution Hang Fix (B1)
 

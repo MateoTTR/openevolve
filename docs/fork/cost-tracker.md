@@ -6,15 +6,15 @@ Cumulative tracking of session duration across all fork sessions.
 
 | # | Date | Session | Duration | Summary |
 |---|---|---|---|---|
-| — | — | — | — | No sessions yet |
+| 1 | 2026-03-28 | 001 | ~2h | Sprint 001: CI workflow + reasoning model config flag |
 
 ## Cumulative Totals
 
 | Metric | Value |
 |---|---|
-| **Total sessions** | 0 |
-| **Total duration** | 0h |
-| **Avg duration/session** | — |
+| **Total sessions** | 1 |
+| **Total duration** | ~2h |
+| **Avg duration/session** | ~2h |
 
 ## Notes
 

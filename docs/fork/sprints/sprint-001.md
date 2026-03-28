@@ -1,7 +1,7 @@
 # Sprint 001 — Quick Wins + CI Foundation
 
-**Status**: Planning
-**Goal**: Establish CI pipeline for the fork, fix Gemini reasoning model detection (F2), and validate the fork development workflow end-to-end.
+**Status**: Done
+**Goal**: Establish CI pipeline for the fork, generalize reasoning model detection with explicit config flag, and validate the fork development workflow end-to-end.
 **Upstream base**: v0.2.27
 
 ---
@@ -9,7 +9,22 @@
 ## Source
 
 - Revolver demo feedback: `/home/mathi/revolver-demos/beamforming/demos/demo-v0.9.0/feedback.md` (F2)
-- Upstream issue: Gemini thinking models not detected as reasoning models in `llm/openai.py`
+- Upstream issue: Non-OpenAI reasoning/thinking models (Gemini, DeepSeek-R1, etc.) cannot be configured as reasoning models
+
+---
+
+## Design Decision — Reasoning Model Detection
+
+### Problem
+
+The current code hardcoded `OPENAI_REASONING_MODEL_PREFIXES` as a local variable inside `generate_with_context()`. Adding non-OpenAI prefixes (Gemini, Claude) is fragile: naming conventions vary, thinking is optional per model, future model names are unpredictable.
+
+### Solution
+
+Added `is_reasoning_model: Optional[bool] = None` on `LLMModelConfig`:
+- `True` → treat as reasoning model
+- `False` → treat as standard model
+- `None` (default) → auto-detect via OpenAI prefix list (backward-compatible)
 
 ---
 
@@ -17,10 +32,10 @@
 
 | # | Task | Layer | PR | Status | Upstream PR? |
 |---|---|---|---|---|---|
-| OE-01 | CI workflow: `.github/workflows/fork-ci.yml` — triggers on push/PR to `develop`, runs unit tests + black + isort + mypy. Uses self-hosted runner. | infra | PR-A | [ ] | No |
-| OE-02 | Add Gemini prefixes (`"gemini-2.5-"`, `"gemini-3-"`) to `OPENAI_REASONING_MODEL_PREFIXES` tuple in `openevolve/llm/openai.py`. | code | PR-B | [ ] | Yes |
-| OE-03 | Add optional `reasoning_model_prefixes: list[str] | None` field to `LLMModelConfig` in `config.py`. When set, override the global prefixes for that specific model. This future-proofs prefix detection for arbitrary providers. | code | PR-B | [ ] | Yes |
-| OE-04 | Unit tests: `tests/test_gemini_reasoning_detection.py` — test that Gemini 2.5 Pro/Flash are detected as reasoning models, that `max_completion_tokens` is used instead of `max_tokens`, that per-model prefix override works. | test | PR-B | [ ] | Yes |
+| OE-01 | CI workflow: `.github/workflows/fork-ci.yml` — ubuntu-latest, unit tests + black + isort + mypy (all lint as continue-on-error due to upstream formatting) | infra | [PR #3](https://github.com/MateoTTR/openevolve/pull/3) | [x] | No |
+| OE-02 | Extract `OPENAI_REASONING_MODEL_PREFIXES` to module-level constant, extract `is_reasoning_model()` function | code | [PR #4](https://github.com/MateoTTR/openevolve/pull/4) | [x] | Yes |
+| OE-03 | Add `is_reasoning_model: Optional[bool] = None` to `LLMModelConfig`, wire through `OpenAILLM` | code | [PR #4](https://github.com/MateoTTR/openevolve/pull/4) | [x] | Yes |
+| OE-04 | Unit tests: 3-state logic, backward compat, explicit override, updated stale `test_openai_model_detection.py` | test | [PR #4](https://github.com/MateoTTR/openevolve/pull/4) | [x] | Yes |
 
 ---
 
@@ -28,29 +43,28 @@
 
 | PR | Tasks | Base branch | Target | Upstream-able? |
 |---|---|---|---|---|
-| PR-A | OE-01 | develop | develop | No (CI is fork-specific) |
-| PR-B | OE-02, OE-03, OE-04 | develop | develop | Yes (cherry-pick OE-02 + OE-03 + OE-04 to `upstream/gemini-reasoning-prefixes` from `main`) |
-
-PR-A and PR-B are fully independent — can be developed in parallel.
+| [PR #3](https://github.com/MateoTTR/openevolve/pull/3) | OE-01 | develop | develop | No (CI is fork-specific) |
+| [PR #4](https://github.com/MateoTTR/openevolve/pull/4) | OE-02, OE-03, OE-04 | **main** | develop | Yes (`upstream/reasoning-model-config` branch ready) |
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] CI runs on push to `develop` and passes (unit tests + formatting + mypy)
-- [ ] `is_reasoning_model("gemini-2.5-pro")` returns `True`
-- [ ] `is_reasoning_model("gemini-2.5-flash")` returns `True`
-- [ ] `is_reasoning_model("gemini-2.5-flash-lite")` returns `False` (not a thinking model)
-- [ ] Per-model `reasoning_model_prefixes` override works in config
-- [ ] All existing tests still pass
-- [ ] Upstream PR branch (`upstream/gemini-reasoning-prefixes`) created from `main`, clean (no fork docs)
+- [x] CI runs on push to `develop` and passes (unit tests pass, lint as warnings)
+- [x] `is_reasoning_model("o3-mini")` returns `True` (auto-detect, backward compat)
+- [x] `is_reasoning_model("gemini-2.5-flash", config_flag=True)` returns `True` (explicit)
+- [x] `is_reasoning_model("gemini-2.5-flash")` returns `False` (no auto-detect for non-OpenAI)
+- [x] `is_reasoning_model("claude-sonnet-4-5-20250929")` returns `False`
+- [x] Existing configs without `is_reasoning_model` work unchanged
+- [x] All 384 tests pass (12 new + 372 existing, 0 failures)
+- [x] Upstream PR branch (`upstream/reasoning-model-config`) created from `main`, clean (no fork docs)
 
 ---
 
 ## Release
 
 After merge to `develop`:
-- Tag: `v0.2.27-rev.1`
+- Tag: `v0.2.27-rev.1` (pending)
 - Install in Revolver: `pip install "openevolve @ git+https://github.com/MateoTTR/openevolve@v0.2.27-rev.1"`
 - Validate: run Revolver test suite with fork version
 
@@ -58,12 +72,22 @@ After merge to `develop`:
 
 ## Sprint Review
 
-_Filled at sprint end._
+### Session
+- Date: 2026-03-28
+- Session: 001
 
 ### Tests
-- X / N new tests passing
-- X / N existing tests passing (no regression)
+- 12 new tests passing (test_reasoning_model_detection.py + updated test_openai_model_detection.py)
+- 384 / 384 total tests passing (no regression)
+
+### PRs
+- [PR #3](https://github.com/MateoTTR/openevolve/pull/3) — CI workflow — merged
+- [PR #4](https://github.com/MateoTTR/openevolve/pull/4) — Reasoning model config — merged
 
 ### Upstream PR
-- [ ] `upstream/gemini-reasoning-prefixes` branch created
-- [ ] PR submitted to `algorithmicsuperintelligence/openevolve`
+- [x] `upstream/reasoning-model-config` branch created from `main`
+- [ ] PR submitted to `algorithmicsuperintelligence/openevolve` (to do when ready)
+
+### Review findings addressed
+- CI: added `timeout-minutes: 15`, `continue-on-error: true` on lint steps (upstream formatting issues)
+- Code: cleaned up redundant prefixes, replaced full model names with `gpt-oss-` prefix, rewrote stale test, added `shared_config` exclusion comment
